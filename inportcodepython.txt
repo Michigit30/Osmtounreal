@@ -71,7 +71,7 @@ def import_splines_from_json(json_path, blueprint_path):
 
 # IMPORTANT: Replace this path with the real path to your .json file on your PC!
 # Use r"Path" (Raw String) because of the backslashes in Windows.
-json_file_path = r"C:Path/ue-pcg-area-splines.json"
+json_file_path = r"C:Path/Untitled_roads_only.json"
 
 # The path to the Blueprint you created in step 2
 blueprint_asset_path = "/Game/BP_RoadSpline"
