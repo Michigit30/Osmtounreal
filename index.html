@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Street & Spline Converter</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(15, 23, 42, 0.2);
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .drop-zone p {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .drop-zone span {
+            display: block;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .status {
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .status.success {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .status.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.2s ease;
+            text-align: center;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Spline-Straßen Converter</h1>
+    <p class="subtitle">Filtert Gebäude & Bäume heraus, konvertiert Meter in Zentimeter und passt das Layout für das Unreal Engine PCG-Spline-Format an.</p>
+
+    <div class="drop-zone" id="dropZone">
+        <p>Datei hierher ziehen oder klicken zum Auswählen</p>
+        <span>Akzeptiert nur .json-Dateien</span>
+        <input type="file" id="fileInput" accept=".json">
+    </div>
+
+    <div id="statusBox" class="status"></div>
+    
+    <a id="downloadBtn" class="btn hidden">Konvertierte JSON herunterladen</a>
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const statusBox = document.getElementById('statusBox');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // Klick auf die Drop-Zone triggert das unsichtbare Datei-Input Feld
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // Drag & Drop Effekte
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'));
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    function showStatus(message, isError = false) {
+        statusBox.textContent = message;
+        statusBox.className = 'status ' + (isError ? 'error' : 'success');
+        statusBox.style.display = 'block';
+    }
+
+    function handleFile(file) {
+        if (!file.name.endsWith('.json')) {
+            showStatus('Fehler: Bitte lade eine gültige .json-Datei hoch.', true);
+            downloadBtn.classList.add('hidden');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const rawData = JSON.parse(e.target.result);
+                
+                if (!rawData.roads || !Array.isArray(rawData.roads)) {
+                    showStatus('Fehler: Keine gültigen "roads" (Straßen-Daten) in der Datei gefunden.', true);
+                    downloadBtn.classList.add('hidden');
+                    return;
+                }
+
+                const convertedRoads = [];
+
+                // Konvertierungs-Schleife (Nur Straßen verarbeiten)
+                rawData.roads.forEach((road, idx) => {
+                    const streetName = road.name || '';
+                    const highwayType = road.highway || 'residential';
+                    
+                    // Klassifizierung major vs minor
+                    let roadType = "minor_road";
+                    if (['primary', 'secondary', 'tertiary', 'trunk', 'motorway'].includes(highwayType)) {
+                        roadType = "major_road";
+                    }
+                    
+                    const safeName = streetName.replace(/\s+/g, '_').replace(/-/g, '_') || 'unnamed';
+                    const key = `${roadType}_${safeName}_${idx}`;
+                    
+                    // Meter in Zentimeter umrechnen (* 100)
+                    const controlPoints = [];
+                    if (road.points && Array.isArray(road.points)) {
+                        road.points.forEach(pt => {
+                            controlPoints.push({
+                                "X": Math.round(pt[0] * 100 * 10) / 10,
+                                "Y": Math.round(pt[1] * 100 * 10) / 10,
+                                "Z": 0.0
+                            });
+                        });
+                    }
+                    
+                    convertedRoads.push({
+                        "key": key,
+                        "type": roadType,
+                        "shape": "line",
+                        "street": streetName,
+                        "osmClass": highwayType,
+                        "bBridge": false,
+                        "bTunnel": false,
+                        "osmLayer": 0,
+                        "bClosed": false,
+                        "controlPointsCm": controlPoints
+                    });
+                });
+
+                // Erfolg melden
+                showStatus(`Erfolg! ${convertedRoads.length} Straßen erfolgreich konvertiert. Gebäude und Bäume wurden entfernt.`);
+                
+                // Download-Button vorbereiten
+                const blob = new Blob([JSON.stringify(convertedRoads, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                downloadBtn.href = url;
+                downloadBtn.download = file.name.replace('.json', '_roads_only.json');
+                downloadBtn.classList.remove('hidden');
+
+            } catch (err) {
+                showStatus('Fehler beim Parsen der JSON-Datei. Ist die Datei beschädigt?', true);
+                downloadBtn.classList.add('hidden');
+            }
+        };
+
+        reader.readAsText(file);
+    }
+</script>
+
+</body>
+</html>
