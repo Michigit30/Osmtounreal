@@ -3,19 +3,19 @@ import json
 import os
 
 def import_splines_from_json(json_path, blueprint_path):
-    # 1. Prüfen, ob die Datei existiert
+  # 1. Check if the file exists
     if not os.path.exists(json_path):
         unreal.log_error(f"Fehler: JSON-Datei nicht gefunden unter {json_path}")
         return
 
-    # 2. JSON-Daten laden
+    # 2. Load JSON data
     try:
         with open(json_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
     except Exception as e:
         unreal.log_error(f"Fehler beim Lesen der JSON-Datei: {e}")
         return
-# 3. Blueprint-Klasse laden
+# 3. Load Blueprint class
     bp_class = unreal.EditorAssetLibrary.load_blueprint_class(blueprint_path)
     if not bp_class:
         unreal.log_error(f"Fehler: Konnte Blueprint '{blueprint_path}' nicht finden. Hast du BP_RoadSpline erstellt?")
@@ -24,7 +24,7 @@ def import_splines_from_json(json_path, blueprint_path):
     # Editor Subsystem zum Spawnen von Actors holen
     editor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 
-    # 4. Daten iterieren und Splines erstellen
+    # 4. Iterate Data and Create Splines
     for road in data:
         road_key = road.get("key", "UnknownRoad")
         is_closed = road.get("bClosed", False)
@@ -33,7 +33,7 @@ def import_splines_from_json(json_path, blueprint_path):
         if not points:
             continue
 
-        # Actor am Nullpunkt spawnen
+        # Spawn actor at zero point
         spawn_location = unreal.Vector(0, 0, 0)
         spawn_rotation = unreal.Rotator(0, 0, 0)
         new_actor = editor_subsystem.spawn_actor_from_class(bp_class, spawn_location, spawn_rotation)
@@ -48,8 +48,8 @@ def import_splines_from_json(json_path, blueprint_path):
             if spline_comp:
                 # Standard-Punkte der neuen Spline löschen
                 spline_comp.clear_spline_points(True)
-A
-                # JSON-Punkte hinzufügen
+
+                # Add JSON points
                 for i, point in enumerate(points):
                     # Koordinaten übernehmen (JSON ist bereits in Zentimetern, genau wie Unreal)
                     ue_vector = unreal.Vector(point["X"], point["Y"], point["Z"])
@@ -66,16 +66,16 @@ A
     unreal.log_warning(f"Erfolgreich {len(data)} Splines in das Level importiert!")
 
 # ==========================================
-# AUSFÜHRUNG
+# EXECUTION
 # ==========================================
 
-# WICHTIG: Ersetze diesen Pfad mit dem echten Pfad zu deiner .json Datei auf deinem PC!
-# Nutze r"Pfad" (Raw String) wegen der Backslashes in Windows.
-json_file_path = r"C:Pfad/ue-pcg-area-splines.json"
+# IMPORTANT: Replace this path with the real path to your .json file on your PC!
+# Use r"Path" (Raw String) because of the backslashes in Windows.
+json_file_path = r"C:Path/ue-pcg-area-splines.json"
 
-# Der Pfad zu dem Blueprint, den du in Schritt 2 erstellt hast
+# The path to the Blueprint you created in step 2
 blueprint_asset_path = "/Game/BP_RoadSpline"
 
-# Skript starten
+# Start script
 import_splines_from_json(json_file_path, blueprint_asset_path)
     
