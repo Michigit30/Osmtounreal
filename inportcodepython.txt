@@ -77,5 +77,5 @@ json_file_path = r"C:Path/Untitled_roads_only.json"
 blueprint_asset_path = "/Game/BP_RoadSpline"
 
 # Start script
-import_splines_from_json(json_file_path, blueprint_asset_path)
+import_splines_from_json(json_file_path, blueprint_asset_path) 
     
